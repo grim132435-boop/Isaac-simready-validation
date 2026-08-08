@@ -59,6 +59,11 @@ parser.add_argument("--freq", type=float, default=0.5,
                          " 게인 지배인지 가르는 데 쓴다 (지연 지배면 오차 ∝ 주파수)")
 parser.add_argument("--freq-scan", action="store_true",
                     help="게인은 고정하고 주파수만 바꿔가며 측정")
+parser.add_argument("--payload-scan", action="store_true",
+                    help="게인은 무부하 기준으로 고정하고 payload만 늘려가며 측정")
+parser.add_argument("--payload-list", type=float, nargs="+",
+                    default=[0.0, 2.5, 5.0, 10.0],
+                    help="--payload-scan 에서 시험할 payload 목록 [kg]")
 args = parser.parse_args()
 
 # --------------------------------------------------------------------------
@@ -276,12 +281,20 @@ def run_one(stiffness: float, damping: float) -> dict:
 
 
 def main() -> None:
-    if args.freq_scan:
+    if args.payload_scan:
+        # 게인은 무부하 기준으로 잘 잡아둔 값(10^5)에 고정하고 payload만 늘린다.
+        # 무빙실러 사례의 재현 — 엔드이펙터 무게가 반영되지 않은 채로 잡힌 게인이
+        # 실제 부하에서 어떻게 처짐을 만드는지 본다.
+        combos = [(1.0e5, 5.0e3)] * len(args.payload_list)
+        freqs = [args.freq] * len(combos)
+        payloads = args.payload_list
+    elif args.freq_scan:
         # 게인을 충분히 높게 고정하고 주파수만 바꾼다.
         # 오차가 주파수에 비례하면 → 파이프라인 지연 지배 (게인으로 못 줄인다)
         # 오차가 주파수와 무관하면 → 다른 원인 (게인·effort 포화 등)
         combos = [(1.0e5, 5.0e3)] * 4
         freqs = [0.125, 0.25, 0.5, 1.0]
+        payloads = [args.payload] * len(combos)
     elif args.sweep:
         combos = [
             (1.0e3, 5.0e1),
@@ -290,9 +303,11 @@ def main() -> None:
             (1.0e6, 5.0e4),
         ]
         freqs = [args.freq] * len(combos)
+        payloads = [args.payload] * len(combos)
     else:
         combos = [(args.stiffness, args.damping)]
         freqs = [args.freq]
+        payloads = [args.payload]
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -302,10 +317,12 @@ def main() -> None:
     rows = []
     writer = None
     with out.open("w", newline="", encoding="utf-8") as f:
-        for (k, d), fq in zip(combos, freqs):
-            args.freq = fq  # measure() 가 args.freq 를 읽는다
+        for (k, d), fq, pl in zip(combos, freqs, payloads):
+            # measure()/run_one() 이 args 를 읽으므로 여기서 갈아끼운다
+            args.freq = fq
+            args.payload = pl
             print(f"[P1] measuring stiffness={k:g} damping={d:g} "
-                  f"freq={fq}Hz payload={args.payload}kg ...")
+                  f"freq={fq}Hz payload={pl}kg ...")
             row = run_one(k, d)
             rows.append(row)
             print(f"     -> {row}")
