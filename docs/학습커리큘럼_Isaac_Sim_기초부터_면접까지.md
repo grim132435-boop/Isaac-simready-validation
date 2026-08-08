@@ -110,12 +110,37 @@ D:\ic\env\Scripts\isaacsim.exe
 
 ### 직접 할 것
 1. `Window > Extensions` → `isaacsim.asset.importer.urdf` 켜져 있는지 확인
-2. UR10 URDF 경로 찾기:
-   ```powershell
-   & 'D:\ic\env\python.exe' -c "from isaacsim.core.utils.extensions import get_extension_path_from_name; print(get_extension_path_from_name('isaacsim.asset.importer.urdf'))"
+2. `File > Import` → 아래 경로를 그대로 붙여넣는다 (실측 확인된 경로)
    ```
-   → 그 아래 `data/urdf/robots/ur10/urdf/ur10.urdf`
-3. `File > Import` → 위 URDF 선택
+   D:\ic\env\Lib\site-packages\isaacsim\exts\isaacsim.asset.importer.urdf\data\urdf\robots\ur10\urdf\ur10.urdf
+   ```
+
+> **경로가 바뀌었으면 이걸로 찾는다** (Isaac Sim을 띄우지 않는다)
+> ```powershell
+> Get-ChildItem D:\ic\env -Recurse -Filter ur10.urdf | Select-Object -ExpandProperty FullName
+> ```
+>
+> ⚠️ `get_extension_path_from_name()` 을 그냥 `python -c` 로 부르면 **안 된다.**
+> 그 함수는 Isaac Sim 앱이 떠 있어야 동작해서, 맨 파이썬에서 부르면 Kit 커널을 부팅하려다
+> `Unable to bootstrap inner kit kernel: EOF when reading a line` 로 죽는다.
+> 경로 하나 알려고 앱 전체를 띄울 이유도 없다.
+
+### 동봉된 다른 로봇 (같은 `robots/` 폴더)
+
+| 로봇 | 종류 | 연습 가치 |
+|---|---|---|
+| `ur10` | 협동로봇 (UR) | 기본. P1에서 사용 |
+| `cobotta_pro_900` | 협동로봇 (Denso) | **두 번째 연습 대상으로 추천** |
+| `franka_description` | Franka Panda | 논문·예제 표준 로봇 |
+| `carter` / `kaya` | 모바일 로봇 | Fix Base 끄는 경우를 볼 때 |
+| `cartpole` | RL 교보재 | 관절 1개짜리 최소 예제 |
+
+> 로봇 하나만 임포트해보면 "튜토리얼 따라했네"가 된다.
+> **두 개를 해보면 "임포트 옵션이 로봇마다 어떻게 달라지는가"** 를 말할 수 있다.
+
+### ⚠️ GUI와 스크립트를 동시에 돌리지 마라
+GUI가 떠 있는데 python 스크립트를 실행하면 **Isaac Sim 인스턴스가 하나 더 뜬다.**
+VRAM 12GB에 두 개는 부담이다. GUI 실습 중엔 GUI만, 스크립트 돌릴 땐 GUI를 끈다.
 4. **옵션 창을 그냥 넘기지 마라.** 각 항목을 [GUI 실습 가이드](GUI_실습_URDF임포트_게인튜닝_중력보상.md) §2-3~2-5와 대조하며 읽는다
 5. Import
 
