@@ -20,8 +20,13 @@ cd Isaac-simready-validation
 | 1 | `nvidia-smi` 로 자리 확인 | 1분 | GPU·VRAM·드라이버 |
 | 2 | [설치 가이드](docs/PC방_환경_재구축_가이드.md) **경로 B** 를 위에서부터 | 5분 조작 | B-4에서 다운로드 시작되면 손 뗌 |
 | 3 | **설치 도는 동안** 아래 §2 복습 | 25분 | 대기 시간 활용 |
-| 4 | 설치 완료 후 §3 실습 | 나머지 | |
-| 5 | 떠나기 전 `git push` | 3분 | |
+| 4 | 튜토리얼 에셋 받기 | 2분 | `scripts\fetch_tutorial_assets.ps1` → `D:\ic\assets\vendor\` |
+| 5 | 설치 완료 후 §3 실습 | 나머지 | |
+| 6 | 떠나기 전 `git push` | 3분 | |
+
+> **에셋은 git에 없습니다.** 21MB라 스크립트로 매번 받습니다. pip 설치본엔 Nucleus가 없어서
+> Content 브라우저가 비어 있는 게 정상이고, 그래서 로컬 다운로드가 필요합니다.
+> 폴더 설계 근거는 [용어사전 §3.3](docs/레퍼런스_IsaacSim_용어사전.md#33-실험-프로젝트-폴더-구조).
 
 > ### 설치 문서는 오늘 처음 실행됐고, 오류가 나왔습니다
 > 문서를 **"정답"이 아니라 "1차 초안"** 으로 다뤄 주세요.
@@ -47,14 +52,24 @@ cd Isaac-simready-validation
 | 주파수 스캔 | [results/p1_freqscan.csv](results/p1_freqscan.csv) | 오차 ∝ 주파수 → **고정 지연 τ ≈ 26ms** |
 | payload 스캔 | [results/p1_payload.csv](results/p1_payload.csv) | 정적 처짐만 5.4배, **동적 오차는 0.09% 불변** |
 
-**문서 4종**
+**문서 7종**
 
 | 문서 | 용도 |
 |---|---|
 | [핵심개념_정리.md](docs/핵심개념_정리.md) | USD/PhysX/Kit 용어 지도. **먼저 읽을 것** |
 | [학습커리큘럼](docs/학습커리큘럼_Isaac_Sim_기초부터_면접까지.md) | STEP 0~8. 예측→실행→자가진단 |
-| [GUI 실습 가이드](docs/GUI_실습_URDF임포트_게인튜닝_중력보상.md) | 클릭 순서 레퍼런스 |
+| [GUI 실습 — URDF 임포트·게인튜닝](docs/GUI_실습_URDF임포트_게인튜닝_중력보상.md) | 로봇 1대 기준 클릭 순서 |
+| [GUI 실습 — 매니퓰레이터+그리퍼](docs/GUI_실습_매니퓰레이터_그리퍼_어셈블_클로즈드루프_최적화.md) | **튜토리얼 6~12.** 어셈블·클로즈드루프·최적화 |
+| 📖 [레퍼런스 — 용어·구조 사전](docs/레퍼런스_IsaacSim_용어사전.md) | **초록 링크 만났을 때 30초 조회용** |
+| 📖 [레퍼런스 — 도구 카드](docs/레퍼런스_IsaacSim_도구.md) | Gain Tuner / Robot Assembler / Physics Inspector 등 |
 | [PC방 환경 재구축](docs/PC방_환경_재구축_가이드.md) | 설치 |
+
+> **막히면 원문 링크를 누르지 말고 레퍼런스 2종부터.** 항목마다 「실습에서 할 일」과
+> 「복귀 지점」이 있어 맥락이 안 끊긴다. 없는 용어는 그 자리에서 추가.
+>
+> 🌐 **통합 웹 매뉴얼** — https://claude.ai/code/artifact/52ad7d3c-f237-4329-809f-c058a6123a5b
+> 실습 + 레퍼런스가 한 페이지. 용어에 마우스를 올리면 정의 팝오버.
+> Isaac Sim이 메인 화면을 쓰므로 서브모니터·폰에 띄워두면 편하다.
 
 > 개념 문서 웹 버전 (렌더링 걱정 없음, 폰에서도 열림):
 > https://claude.ai/code/artifact/663a729f-7c68-4406-bed4-c39d2ae7aa6c
@@ -151,6 +166,17 @@ GUI로 `cobotta_pro_900` 임포트까지 완료. collider 시각화로 확인하
 ---
 
 ## 5. 자주 쓰는 것
+
+### 에셋 경로 (UR10e + Robotiq 2F-140)
+```
+D:\ic\assets\vendor\Manipulator\import_manipulator\
+  ├ ur10e\ur\ur.usd                     UR10e 본체 (defaultPrim = /ur)
+  ├ robotiq_2f_140\robotiq_2f_140.usd   그리퍼 배포본
+  └ ur10e\ur\ur_gripper.usd             조립 정답지
+D:\ic\assets\vendor\Manipulator\configure_manipulator\
+  └ ur10e\ur\ur_gripper.usd             Tutorial 7 완료본
+```
+없으면 `powershell -ExecutionPolicy Bypass -File scripts\fetch_tutorial_assets.ps1`
 
 ### 환경 변수 (매 PowerShell 창마다)
 ```powershell
