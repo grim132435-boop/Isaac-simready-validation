@@ -333,6 +333,104 @@ Kit을 먼저 띄우는 스크립트 안에서만 import가 된다.
 
 ---
 
+## 부록: NVIDIA SimReady Foundation (선택 — 엔닷라이트 SimReady 스펙 학습·검증용)
+
+[nvidia/simready-foundation](https://github.com/nvidia/simready-foundation)은 NVIDIA가 공개한
+**SimReady 자산 스펙의 공식 레퍼런스 구현체**다. `simready-validate` CLI로 USD 에셋을
+Requirement → Capability → Feature → Profile 계층에 대해 실제로 검증할 수 있다.
+
+**왜 완전히 별도 환경인가** — 이 도구는 **Python 3.12** 를 요구하는데, Isaac Sim 5.1은
+**Python 3.11**로 고정돼 있다(위 「버전 고정」 표 참고). 같은 conda env에 섞으면 버전 충돌이 나므로
+Isaac Sim용 `D:\ic\env`와는 완전히 분리된 `D:\ic\simready-env`를 새로 판다. 서로 참조하지 않으므로
+설치·삭제 순서는 자유롭다 (Isaac Sim 설치 전/후 아무 때나 해도 됨).
+
+### 부-1. Git 설치 (이 PC방엔 git이 아예 없는 상태로 시작한다)
+
+winget도 없는 자리를 기준으로 한다. PortableGit(7z 자가압축)을 받아 압축만 푼다 — 설치 프로그램이
+아니라 관리자 권한이 필요 없다. Git for Windows는 최신 릴리스에 git-lfs가 이미 번들돼 있다
+(`Git\mingw64\bin\git-lfs.exe`), 그래서 lfs를 따로 받을 필요가 없다.
+
+```powershell
+$ProgressPreference = 'SilentlyContinue'
+$rel   = Invoke-RestMethod -Uri 'https://api.github.com/repos/git-for-windows/git/releases/latest' -Headers @{ 'User-Agent' = 'pwsh' }
+$asset = $rel.assets | Where-Object { $_.name -like 'PortableGit-*-64-bit.7z.exe' } | Select-Object -First 1
+Invoke-WebRequest -Uri $asset.browser_download_url -OutFile 'D:\ic\PortableGit.exe' -UseBasicParsing
+
+Start-Process -FilePath 'D:\ic\PortableGit.exe' -ArgumentList '-o"D:\ic\Git"', '-y' -Wait
+& 'D:\ic\Git\bin\git.exe' --version
+```
+
+**매 세션마다 PATH에 추가** (PowerShell 창을 새로 열 때마다, 또는 명령마다 필요):
+```powershell
+$env:PATH = "D:\ic\Git\bin;D:\ic\Git\cmd;D:\ic\Git\mingw64\bin;$env:PATH"
+git lfs install     # 최초 1회 — 전역 git config에 LFS 필터를 등록한다
+```
+
+### 부-2. Python 3.12 환경 (기존 Miniconda 재사용)
+
+B-1에서 이미 깐 Miniconda로 **두 번째 env**를 만든다. Miniconda 자체를 다시 받을 필요는 없다.
+
+```powershell
+& 'D:\ic\miniconda3\Scripts\conda.exe' create -p D:\ic\simready-env python=3.12 -y --override-channels -c conda-forge
+```
+
+### 부-3. 저장소 clone + LFS 자산 받기
+
+`git clone`만으로는 USD·이미지 같은 LFS 추적 파일이 포인터만 받아진다. `git lfs pull`이 실제
+바이너리(샘플 콘텐츠 포함 약 3.3GB)를 내려받는다 — 이 단계가 제일 오래 걸린다.
+
+```powershell
+$env:PATH = "D:\ic\Git\bin;D:\ic\Git\cmd;D:\ic\Git\mingw64\bin;$env:PATH"
+New-Item -ItemType Directory -Force D:\ic\repos | Out-Null
+git clone https://github.com/NVIDIA/simready-foundation.git D:\ic\repos\simready-foundation
+Set-Location D:\ic\repos\simready-foundation
+git lfs pull
+```
+
+### 부-4. 의존성 설치
+
+```powershell
+$env:TEMP='D:\ic\tmp'; $env:TMP='D:\ic\tmp'
+& 'D:\ic\simready-env\python.exe' -m pip install --upgrade pip
+& 'D:\ic\simready-env\python.exe' -m pip install -r D:\ic\repos\simready-foundation\requirements.txt --cache-dir D:\ic\pipcache
+```
+
+### 부-5. 검증
+
+```powershell
+& 'D:\ic\simready-env\Scripts\simready-validate.exe' --help
+```
+
+저장소 안의 `sample_content/`에 이미 샘플 에셋이 들어 있어서 다운로드 없이 바로 실제 검증을
+돌려볼 수 있다. 그리퍼로 쥐는 물체(`coffee_cup_grasp_a01`)로 확인한 결과 — **2026-08-10 실측**:
+
+```powershell
+Set-Location D:\ic\repos\simready-foundation
+& 'D:\ic\simready-env\Scripts\simready-validate.exe' --project-config sample_content\project_config.toml `
+  --profile Prop-Robotics-Physx --version 1.0.0 `
+  sample_content\common_assets\props_general\coffee_cup_grasp_a01\simready_physx_usd\sm_coffee_cup_grasp_a01_01.usd
+```
+```
+Asset: sample_content\common_assets\props_general\coffee_cup_grasp_a01\simready_physx_usd\sm_coffee_cup_grasp_a01_01.usd
+  [PASSED] Prop-Robotics-Physx v1.0.0
+```
+
+`--output result.json`을 붙이면 어떤 Feature(FET003_BASE_PHYSX, FET004_BASE_PHYSX 등)가
+각각 통과했는지 구조화된 JSON으로 남길 수 있다 — 이 프로필 하나가 내부적으로 8개 Feature,
+그 밑에 다시 수십 개 Requirement로 쪼개져 있다는 걸 로그에서 직접 확인할 수 있다.
+
+### 참고 — 지금 실습과 바로 연결되는 샘플 에셋
+
+저장소 안에 UR10과 Robotiq 2F-85 그리퍼 샘플이 이미 들어 있다. Isaac Sim에서 그리퍼 어셈블·
+게인 튜닝을 연습한 결과물을, 여기서 공식 SimReady 프로필(`Robot-Body-Runnable` 등)로 검증해보는
+흐름을 만들 수 있다.
+```
+D:\ic\repos\simready-foundation\sample_content\common_assets\robots_general\ur10\simready_isaac_usd\ur10.usd
+D:\ic\repos\simready-foundation\sample_content\common_assets\robots_general\Robotiq\2F-85\simready_isaac_usd\Robotiq_2F_85.usda
+```
+
+---
+
 ## 이 환경의 한계 (알고 쓸 것)
 
 - **VRAM 12GB < 공식 최소 16GB** — 로봇 1대 수준 씬은 실측상 문제없다.
