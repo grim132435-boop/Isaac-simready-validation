@@ -49,7 +49,7 @@ USB 복원 경로가 필요해지면 아래 「부록: USB 복원」을 본다.
 
 ### 떠나기 전에 실행
 ```powershell
-cd C:\Users\Administrator\Desktop\ndotlight-simready
+cd C:\Users\Administrator\Desktop\n2p\20_Projects\Isaac-simready-validation
 powershell -ExecutionPolicy Bypass -File scripts\backup_to_usb.ps1 -UsbDrive E:
 ```
 
