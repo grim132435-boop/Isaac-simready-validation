@@ -2,3 +2,18 @@
 __pycache__/
 *.pyc
 .vscode/
+
+# NVIDIA 디지털 트윈 코스 배포물 — 절대 커밋하지 않는다.
+# 재배포 권한이 없고, 1.8GB라 LFS 없이는 저장소가 죽는다.
+# 받는 법은 docs/코스_에셋_받기.md 에 적어둔다.
+PhysicalAI_SceneAssembly*.zip
+PhysicalAI_SceneAssembly_Start/
+Physical-AI-Learning-KAT/
+
+# Kit 빌드 산출물
+_build/
+_compiler/
+_repo/
+
+# USD 임시 파일
+*.tmp.usd

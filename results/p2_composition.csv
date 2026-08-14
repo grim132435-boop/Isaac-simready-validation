@@ -1,0 +1,4 @@
+stage,load_policy,open_seconds,prims,payloads_loaded,arc_payload,arc_reference,arc_specialize,instanceable,prototypes,up_axis,meters_per_unit,default_prim
+SceneAssembly.usd,LoadAll,5.1,35812,185,71343,35811,460,67,0,Z,0.01,none
+SceneAssembly.usd,LoadNone,0.2,517,0,,516,,,,Z,0.01,none
+Assemblies/CL6_Line_Full.usd,LoadAll,,,,62194,0,345,0,0,Z,0.001,/World
