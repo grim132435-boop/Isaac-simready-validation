@@ -1,4 +1,5 @@
-stage,load_policy,open_seconds,prims,payloads_loaded,arc_payload,arc_reference,arc_specialize,instanceable,prototypes,up_axis,meters_per_unit,default_prim
-SceneAssembly.usd,LoadAll,5.1,35812,185,71343,35811,460,67,0,Z,0.01,none
-SceneAssembly.usd,LoadNone,0.2,517,0,,516,,,,Z,0.01,none
-Assemblies/CL6_Line_Full.usd,LoadAll,,,,62194,0,345,0,0,Z,0.001,/World
+﻿stage,load_policy,open_seconds,prims,payloads_loaded,arc_payload,arc_reference,arc_specialize,instanceable,prototypes,up_axis,meters_per_unit,default_prim,materials_bound,materials_from_central_lib
+SceneAssembly.usd,LoadAll,5.1,35812,185,71343,35811,460,67,0,Z,0.01,none,,
+SceneAssembly.usd,LoadNone,0.2,517,0,,516,,,,Z,0.01,none,,
+Assemblies/CL6_Line_Full.usd,LoadAll,,,,62194,0,345,0,0,Z,0.001,/World,,
+Assets/Machine_USD/N_02_PCB_Router/N_02_PCB_Router.usd,LoadAll,,,,,,,,,Z,1.0,/World,1881,1871
