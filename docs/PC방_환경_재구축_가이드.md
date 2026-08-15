@@ -248,6 +248,7 @@ git clone https://github.com/isaac-sim/IsaacLab.git D:\ic\IsaacLab
 & 'D:\ic\Git\bin\git.exe' -C D:\ic\IsaacLab checkout v2.3.2   # Isaac Sim 5.1 전용 최신 2.3.x. v2.3.3 이상이 나왔으면 그쪽을 우선 확인
 
 # ① 아래 known issue 픽스를 --install보다 먼저 실행 (순서 중요)
+# 주의: 이 선점만으로는 v2.3.2에서 충분하지 않다. 아래 known issue ① 후반부 참고.
 & 'D:\ic\env\python.exe' -m pip install flatdict==4.0.0 --cache-dir D:\ic\pipcache
 
 Set-Location D:\ic\IsaacLab
@@ -258,8 +259,27 @@ Set-Location D:\ic\IsaacLab
 공식 GitHub에 이미 보고·수정된 버그다: [issue #4577](https://github.com/isaac-sim/IsaacLab/issues/4577) (증상: [#4576](https://github.com/isaac-sim/IsaacLab/issues/4576) `ModuleNotFoundError: No module named 'isaaclab'`).
 원인은 최신 setuptools(81+)가 `pkg_resources`를 제거했는데 `flatdict`의 레거시 `setup.py`가 그걸 요구해서 빌드가 깨지는 것.
 [PR #4581](https://github.com/isaac-sim/IsaacLab/pull/4581)에서 `flatdict`를 pkg_resources를 안 쓰는 **4.0.0**으로 되돌려 고쳤는데, 이 커밋이 `main`엔 있지만
-**v2.3.2 태그엔 아직 없다** (다음 2.3.x 릴리즈에 포함될 예정). 그래서 위처럼 `--install` 전에 `flatdict==4.0.0`을 먼저 깔아 선점해야 한다.
-(대안: `pip install "setuptools<81"` 로 `pkg_resources`를 살리고 `pip install flatdict==4.0.1 --no-build-isolation` — 둘 다 동작 확인함.)
+**v2.3.2 태그엔 아직 없다** (다음 2.3.x 릴리즈에 포함될 예정).
+
+> **⚠️ 2026-08-15 실측 — 위 "선점" 만으로는 v2.3.2에서 안 통한다.**
+> `source/isaaclab/setup.py`가 `flatdict==4.0.1`을 **정확히(exact pin)** 요구한다. pip는 이미 깔린 4.0.0을 무시하고
+> 4.0.1을 다시 빌드하려다 그대로 실패하고, `--install`은 그 실패를 삼키고 다음 확장 설치로 넘어가 로그가 성공처럼 보인다.
+> 결과적으로 `isaaclab` 코어만 쏙 빠진 채(`isaaclab_assets`/`isaaclab_tasks`/`isaaclab_rl` 등 나머지는 정상 설치) 끝난다.
+> **실제로 통하는 절차는 아래 "대안" 쪽이다** — 선점 커맨드는 생략해도 되고, `--install` 실행 전이든 실패를 확인한 후든 상관없이 아래를 실행:
+> ```powershell
+> & 'D:\ic\env\python.exe' -m pip install "setuptools<81" --cache-dir D:\ic\pipcache
+> & 'D:\ic\env\python.exe' -m pip install flatdict==4.0.1 --no-build-isolation --cache-dir D:\ic\pipcache
+> ```
+> 그래도 `--install`이 이미 실패를 삼키고 지나간 뒤라면, `isaaclab` 코어만 따로 다시 설치해야 한다
+> (다른 `isaaclab_*` 서브패키지처럼 editable 설치):
+> ```powershell
+> & 'D:\ic\env\python.exe' -m pip install -e D:\ic\IsaacLab\source\isaaclab --no-build-isolation --cache-dir D:\ic\pipcache
+> ```
+> 이 재설치가 `gymnasium`/`starlette`를 자체 요구 버전으로 끌어올리면서 `fastapi 0.115.7 requires starlette<0.46.0`
+> 같은 pip 경고가 뜰 수 있다 — `import isaaclab`이 성공하면 무시해도 된다(실측 확인).
+> 마찬가지로 `stable-baselines3 2.9.0 requires torch>=2.8, but you have torch 2.7.0+cu128` 경고도 뜰 수 있는데,
+> `import stable_baselines3`는 실측상 문제없이 된다.
+
 설치 후 반드시 `python -c "import isaaclab"` 로 실제로 들어갔는지 확인할 것. `pip`가 "Failed to build 'flatdict'"를 찍고도 다음 확장 설치로 그냥 넘어가버려서
 전체 로그는 성공처럼 보일 수 있다.
 
@@ -322,7 +342,7 @@ Kit을 먼저 띄우는 스크립트 안에서만 import가 된다.
 | 경로 관련 파일 없음 에러 | Windows 260자 경로 제한 | 짧은 경로 사용 (`D:\ic\env`). long path 활성화는 admin 필요 |
 | 스크립트가 조용히 종료, traceback 없음 | `simulation_app.close()` 가 프로세스를 즉시 종료 | 예외를 직접 `print` 하고 `flush` 후 close |
 | `print` 출력이 안 보임 | 파이프 리다이렉트 시 stdout 버퍼링 | `python -u` |
-| `isaaclab.bat --install` 후 `ModuleNotFoundError: No module named 'isaaclab'` | `flatdict==4.0.1` 빌드가 `pkg_resources` 없어서 조용히 실패 (setuptools 81+). 기보고된 버그: [#4577](https://github.com/isaac-sim/IsaacLab/issues/4577), 수정 [#4581](https://github.com/isaac-sim/IsaacLab/pull/4581) — v2.3.2엔 미포함 | `--install` 전에 `pip install flatdict==4.0.0` 선점 (B-10 참고) |
+| `isaaclab.bat --install` 후 `ModuleNotFoundError: No module named 'isaaclab'` | `flatdict==4.0.1` 빌드가 `pkg_resources` 없어서 조용히 실패 (setuptools 81+). 기보고된 버그: [#4577](https://github.com/isaac-sim/IsaacLab/issues/4577), 수정 [#4581](https://github.com/isaac-sim/IsaacLab/pull/4581) — v2.3.2엔 미포함. `flatdict==4.0.0` 선점만으론 v2.3.2에서 실측상 안 먹힘 (setup.py가 4.0.1을 exact pin) | `pip install "setuptools<81"` → `pip install flatdict==4.0.1 --no-build-isolation` → `pip install -e source\isaaclab --no-build-isolation` 로 코어만 재설치 (B-10 known issue ① 후반부 참고) |
 | `rl_games` 설치 중 `Cannot find command 'git'` | 같은 세션에서 방금 깐 git이 하위 pip 프로세스 PATH에 반영 안 됨 | 새 PowerShell 창을 열거나 `$env:PATH`에 `D:\ic\Git\bin` 그 세션에서 직접 추가 |
 | `isaaclab.bat --install` 시작하자마자 `The filename, directory name, or volume label syntax is incorrect.` | `pip show torch` 버전 파싱 버그로 항상 재설치 판정 (무해, self-heal) | 무시하고 진행, 끝나면 B-6으로 최종 torch 버전만 재확인 |
 
