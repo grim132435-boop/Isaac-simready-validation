@@ -186,6 +186,14 @@ $env:TMP  = 'D:\ic\tmp'
     --extra-index-url https://pypi.nvidia.com --cache-dir D:\ic\pipcache
 ```
 
+> **⚠️ 중간에 끊기면 이어받기가 안 된다 (2026-08-15 실측).**
+> `isaacsim-extscache-kit` 하나만 3.4GB라 전체 다운로드에 최소 10분 이상 걸린다. 이 커맨드를 실행하는
+> 셸/터미널/원격 세션이 중간에 죽으면 — `--cache-dir`를 지정해도 **다운로드 중이던 파일은 캐시에 안 남는다**
+> (pip은 완전히 받은 wheel만 캐시에 등록한다). 재실행하면 처음부터 전부 다시 받는다.
+> 자동화나 원격 세션으로 돌릴 땐 이 커맨드가 **끝까지 살아있게** 하고, 실행 후 반드시
+> `Test-Path 'D:\ic\env\Lib\site-packages\isaacsim'` 로 실제 설치 완료를 확인한 다음 다음 단계로 넘어갈 것 —
+> 로그가 중간에 끊겨도 프로세스 자체는 살아있을 수 있으니 종료 여부(exit code)까지 같이 확인한다.
+
 ### B-5. PyTorch를 CUDA 빌드로 교체 ★
 ```powershell
 & 'D:\ic\env\python.exe' -m pip uninstall -y torch torchvision torchaudio
@@ -247,13 +255,20 @@ git clone https://github.com/isaac-sim/IsaacLab.git D:\ic\IsaacLab
 & 'D:\ic\Git\bin\git.exe' -C D:\ic\IsaacLab fetch --depth 1 origin tag v2.3.2
 & 'D:\ic\Git\bin\git.exe' -C D:\ic\IsaacLab checkout v2.3.2   # Isaac Sim 5.1 전용 최신 2.3.x. v2.3.3 이상이 나왔으면 그쪽을 우선 확인
 
-# ① 아래 known issue 픽스를 --install보다 먼저 실행 (순서 중요)
-# 주의: 이 선점만으로는 v2.3.2에서 충분하지 않다. 아래 known issue ① 후반부 참고.
-& 'D:\ic\env\python.exe' -m pip install flatdict==4.0.0 --cache-dir D:\ic\pipcache
+# ① known issue 픽스 — --install보다 반드시 먼저 실행 (순서 중요, 2026-08-15 실측 검증 절차)
+# v2.3.2의 source/isaaclab/setup.py가 flatdict==4.0.1을 exact pin 하므로,
+# flatdict==4.0.0을 선점하는 옛 방식은 통하지 않는다 (아래 known issue ① 참고). 아래 두 줄이 실제로 통하는 절차다.
+& 'D:\ic\env\python.exe' -m pip install "setuptools<81" --cache-dir D:\ic\pipcache
+& 'D:\ic\env\python.exe' -m pip install flatdict==4.0.1 --no-build-isolation --cache-dir D:\ic\pipcache
 
 Set-Location D:\ic\IsaacLab
 & .\isaaclab.bat --install
+
+# ② 설치 로그가 성공처럼 보여도 isaaclab 코어가 조용히 빠질 수 있으니 반드시 확인
+& 'D:\ic\env\python.exe' -c "import isaaclab; print('isaaclab: OK')"
 ```
+위 순서대로 하면(픽스 → `--install`) `isaaclab` 코어까지 한 번에 정상 설치된다 (2026-08-15 실측 확인).
+마지막 `import isaaclab` 확인이 실패하면 아래 known issue ①의 복구 커맨드로 코어만 다시 설치한다.
 
 **known issue ① — `flatdict==4.0.1` 빌드 실패로 `isaaclab` 코어 모듈이 조용히 설치 안 됨**
 공식 GitHub에 이미 보고·수정된 버그다: [issue #4577](https://github.com/isaac-sim/IsaacLab/issues/4577) (증상: [#4576](https://github.com/isaac-sim/IsaacLab/issues/4576) `ModuleNotFoundError: No module named 'isaaclab'`).
@@ -261,17 +276,14 @@ Set-Location D:\ic\IsaacLab
 [PR #4581](https://github.com/isaac-sim/IsaacLab/pull/4581)에서 `flatdict`를 pkg_resources를 안 쓰는 **4.0.0**으로 되돌려 고쳤는데, 이 커밋이 `main`엔 있지만
 **v2.3.2 태그엔 아직 없다** (다음 2.3.x 릴리즈에 포함될 예정).
 
-> **⚠️ 2026-08-15 실측 — 위 "선점" 만으로는 v2.3.2에서 안 통한다.**
+> **⚠️ 2026-08-15 실측 — `flatdict==4.0.0` 선점만으로는 v2.3.2에서 안 통한다.**
 > `source/isaaclab/setup.py`가 `flatdict==4.0.1`을 **정확히(exact pin)** 요구한다. pip는 이미 깔린 4.0.0을 무시하고
 > 4.0.1을 다시 빌드하려다 그대로 실패하고, `--install`은 그 실패를 삼키고 다음 확장 설치로 넘어가 로그가 성공처럼 보인다.
 > 결과적으로 `isaaclab` 코어만 쏙 빠진 채(`isaaclab_assets`/`isaaclab_tasks`/`isaaclab_rl` 등 나머지는 정상 설치) 끝난다.
-> **실제로 통하는 절차는 아래 "대안" 쪽이다** — 선점 커맨드는 생략해도 되고, `--install` 실행 전이든 실패를 확인한 후든 상관없이 아래를 실행:
-> ```powershell
-> & 'D:\ic\env\python.exe' -m pip install "setuptools<81" --cache-dir D:\ic\pipcache
-> & 'D:\ic\env\python.exe' -m pip install flatdict==4.0.1 --no-build-isolation --cache-dir D:\ic\pipcache
-> ```
-> 그래도 `--install`이 이미 실패를 삼키고 지나간 뒤라면, `isaaclab` 코어만 따로 다시 설치해야 한다
-> (다른 `isaaclab_*` 서브패키지처럼 editable 설치):
+> **위 코드 블록처럼 `setuptools<81` + `flatdict==4.0.1 --no-build-isolation`을 `--install` 전에 먼저 실행하는 게 실제로 통하는 절차다.**
+>
+> **이미 `--install`을 (구버전 절차로) 돌려서 `import isaaclab`이 실패한 상태라면** — 위 두 줄을 실행한 뒤,
+> `isaaclab` 코어만 따로 재설치한다 (다른 `isaaclab_*` 서브패키지처럼 editable 설치):
 > ```powershell
 > & 'D:\ic\env\python.exe' -m pip install -e D:\ic\IsaacLab\source\isaaclab --no-build-isolation --cache-dir D:\ic\pipcache
 > ```
