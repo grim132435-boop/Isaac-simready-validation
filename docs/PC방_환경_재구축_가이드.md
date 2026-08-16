@@ -248,19 +248,62 @@ git clone https://github.com/isaac-sim/IsaacLab.git D:\ic\IsaacLab
 & 'D:\ic\Git\bin\git.exe' -C D:\ic\IsaacLab fetch --depth 1 origin tag v2.3.2
 & 'D:\ic\Git\bin\git.exe' -C D:\ic\IsaacLab checkout v2.3.2   # Isaac Sim 5.1 전용 최신 2.3.x. v2.3.3 이상이 나왔으면 그쪽을 우선 확인
 
-# ① 아래 known issue 픽스를 --install보다 먼저 실행 (순서 중요)
-& 'D:\ic\env\python.exe' -m pip install flatdict==4.0.0 --cache-dir D:\ic\pipcache
+# ① flatdict 선점 — 이것만으로는 부족하다. 아래 known issue ① 을 반드시 읽을 것
+& 'D:\ic\env\python.exe' -m pip install "setuptools<81" --cache-dir D:\ic\pipcache
+& 'D:\ic\env\python.exe' -m pip install flatdict==4.0.1 --no-build-isolation --cache-dir D:\ic\pipcache
 
 Set-Location D:\ic\IsaacLab
 & .\isaaclab.bat --install
+
+# ② --install 이 끝나면 코어가 실제로 들어갔는지 반드시 확인한다 (조용히 실패한다)
+& 'D:\ic\env\python.exe' -c "import isaaclab; print('OK')"
+# 실패하면 코어만 따로 재설치
+& 'D:\ic\env\python.exe' -m pip install -e D:\ic\IsaacLab\source\isaaclab --no-build-isolation --cache-dir D:\ic\pipcache
 ```
 
 **known issue ① — `flatdict==4.0.1` 빌드 실패로 `isaaclab` 코어 모듈이 조용히 설치 안 됨**
 공식 GitHub에 이미 보고·수정된 버그다: [issue #4577](https://github.com/isaac-sim/IsaacLab/issues/4577) (증상: [#4576](https://github.com/isaac-sim/IsaacLab/issues/4576) `ModuleNotFoundError: No module named 'isaaclab'`).
 원인은 최신 setuptools(81+)가 `pkg_resources`를 제거했는데 `flatdict`의 레거시 `setup.py`가 그걸 요구해서 빌드가 깨지는 것.
 [PR #4581](https://github.com/isaac-sim/IsaacLab/pull/4581)에서 `flatdict`를 pkg_resources를 안 쓰는 **4.0.0**으로 되돌려 고쳤는데, 이 커밋이 `main`엔 있지만
-**v2.3.2 태그엔 아직 없다** (다음 2.3.x 릴리즈에 포함될 예정). 그래서 위처럼 `--install` 전에 `flatdict==4.0.0`을 먼저 깔아 선점해야 한다.
-(대안: `pip install "setuptools<81"` 로 `pkg_resources`를 살리고 `pip install flatdict==4.0.1 --no-build-isolation` — 둘 다 동작 확인함.)
+**v2.3.2 태그엔 아직 없다** (다음 2.3.x 릴리즈에 포함될 예정).
+
+> ### ⚠️ `flatdict==4.0.0` 선점은 v2.3.2에서 통하지 않는다 — 2026-08-16 재실측으로 확정
+>
+> 이 항목은 문서 이력에서 두 번 뒤집혔다. `c11b8b9`가 "선점만으론 안 통함"을 넣었고,
+> `a733148`이 "선점하면 됨"으로 되돌렸다. **2026-08-16에 깨끗한 환경에서 다시 돌려
+> `c11b8b9`가 맞는 것으로 판정했다.** 로그 증거는 이렇다.
+>
+> ```
+>   2: Requirement already satisfied: flatdict==4.0.0 ...   ← 선점은 되어 있었다
+>  78: Collecting flatdict==4.0.1 (from isaaclab==0.54.2)   ← 그런데 4.0.1을 다시 요구
+> 115:       ModuleNotFoundError: No module named 'pkg_resources'
+> 119: ERROR: Failed to build 'flatdict' when getting requirements to build wheel
+> 733: ModuleNotFoundError: No module named 'isaaclab'      ← 코어가 안 들어감
+> ```
+>
+> 이유는 `source/isaaclab/setup.py`가 `flatdict==4.0.1`을 **exact pin** 으로 박아둔 것.
+> pip은 이미 깔린 4.0.0을 "요구사항 불충족"으로 보고 4.0.1을 새로 빌드하려다 그대로 실패한다.
+> **선점한 4.0.0은 아무 역할을 못 한다.**
+>
+> 그리고 `--install` 은 이 실패를 삼키고 다음 확장 설치로 넘어간다. `isaaclab_assets`,
+> `isaaclab_tasks`, `isaaclab_rl` 은 정상 설치되므로 **로그 전체는 성공처럼 보이는데
+> 코어만 쏙 빠져 있다.**
+>
+> **실제로 통하는 절차 — `setuptools<81` 로 `pkg_resources` 를 살린다.**
+> ```powershell
+> & 'D:\ic\env\python.exe' -m pip install "setuptools<81" --cache-dir D:\ic\pipcache
+> & 'D:\ic\env\python.exe' -m pip install flatdict==4.0.1 --no-build-isolation --cache-dir D:\ic\pipcache
+> ```
+> `--install` 이 이미 실패를 삼키고 지나간 뒤라면 코어만 따로 재설치한다.
+> ```powershell
+> & 'D:\ic\env\python.exe' -m pip install -e D:\ic\IsaacLab\source\isaaclab --no-build-isolation --cache-dir D:\ic\pipcache
+> ```
+> 2026-08-16 실측 최종 상태: `isaaclab 0.54.2`, `flatdict 4.0.1`, `setuptools 80.10.2`.
+>
+> 재설치 과정에서 `fastapi 0.115.7 requires starlette<0.46.0`,
+> `stable-baselines3 2.9.0 requires torch>=2.8` 같은 pip 경고가 뜰 수 있는데
+> `import` 가 되면 무시해도 된다 (실측 확인).
+
 설치 후 반드시 `python -c "import isaaclab"` 로 실제로 들어갔는지 확인할 것. `pip`가 "Failed to build 'flatdict'"를 찍고도 다음 확장 설치로 그냥 넘어가버려서
 전체 로그는 성공처럼 보일 수 있다.
 
@@ -461,7 +504,9 @@ $t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
 | 경로 관련 파일 없음 에러 | Windows 260자 경로 제한 | 짧은 경로 사용 (`D:\ic\env`). long path 활성화는 admin 필요 |
 | 스크립트가 조용히 종료, traceback 없음 | `simulation_app.close()` 가 프로세스를 즉시 종료 | 예외를 직접 `print` 하고 `flush` 후 close |
 | `print` 출력이 안 보임 | 파이프 리다이렉트 시 stdout 버퍼링 | `python -u` |
-| `isaaclab.bat --install` 후 `ModuleNotFoundError: No module named 'isaaclab'` | `flatdict==4.0.1` 빌드가 `pkg_resources` 없어서 조용히 실패 (setuptools 81+). 기보고된 버그: [#4577](https://github.com/isaac-sim/IsaacLab/issues/4577), 수정 [#4581](https://github.com/isaac-sim/IsaacLab/pull/4581) — v2.3.2엔 미포함 | `--install` 전에 `pip install flatdict==4.0.0` 선점 (B-10 참고) |
+| `isaaclab.bat --install` 후 `ModuleNotFoundError: No module named 'isaaclab'` | `flatdict==4.0.1` 빌드가 `pkg_resources` 없어서 조용히 실패 (setuptools 81+). 기보고된 버그: [#4577](https://github.com/isaac-sim/IsaacLab/issues/4577), 수정 [#4581](https://github.com/isaac-sim/IsaacLab/pull/4581) — v2.3.2엔 미포함. **`flatdict==4.0.0` 선점은 안 통한다** (setup.py가 4.0.1 exact pin, 2026-08-16 재실측) | `pip install "setuptools<81"` → `pip install flatdict==4.0.1 --no-build-isolation` → 필요 시 `pip install -e source\isaaclab --no-build-isolation` (B-10 known issue ① 참고) |
+| `isaaclab.bat --install` 중 torch 3.3GB 재다운로드 | `isaaclab.bat`이 `--cache-dir`을 하위 pip에 안 물려줌 → 기본 캐시(C:)를 봄 | `$env:PIP_CACHE_DIR='D:\ic\pipcache'` (환경변수는 하위 프로세스로 전파됨) |
+| 한글 주석 든 `.ps1`이 엉뚱한 줄에서 `문자열에 종결자가 없습니다` | PowerShell 5.1은 BOM 없는 UTF-8을 ANSI로 읽어 한글이 깨짐 | 파일을 **UTF-8 with BOM**으로 저장 (B-11-6 참고) |
 | `rl_games` 설치 중 `Cannot find command 'git'` | 같은 세션에서 방금 깐 git이 하위 pip 프로세스 PATH에 반영 안 됨 | 새 PowerShell 창을 열거나 `$env:PATH`에 `D:\ic\Git\bin` 그 세션에서 직접 추가 |
 | `isaaclab.bat --install` 시작하자마자 `The filename, directory name, or volume label syntax is incorrect.` | `pip show torch` 버전 파싱 버그로 항상 재설치 판정 (무해, self-heal) | 무시하고 진행, 끝나면 B-6으로 최종 torch 버전만 재확인 |
 
