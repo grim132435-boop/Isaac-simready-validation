@@ -239,6 +239,7 @@ https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/pip_installa
 
 ```powershell
 $env:TEMP='D:\ic\tmp'; $env:TMP='D:\ic\tmp'
+$env:PIP_CACHE_DIR='D:\ic\pipcache'                   # ★ 이거 빠뜨리면 torch 3.3GB를 새로 받는다 (아래 ③ 참고)
 $env:CONDA_PREFIX='D:\ic\env'
 $env:OMNI_KIT_ACCEPT_EULA='YES'
 $env:PATH = "D:\ic\Git\bin;D:\ic\Git\cmd;$env:PATH"   # 같은 세션에서 방금 git을 깔았다면 필수 (아래 ② 참고)
@@ -274,6 +275,18 @@ Set-Location D:\ic\IsaacLab
 단 첫 설치 직후라 캐시가 없으면 3GB대 재다운로드)하는 배치 스크립트 버그다. 결과 자체는 스크립트 끝에서 다시 맞춰지므로 (`ensure_cuda_torch`가
 `--install` 안에서 최대 2번 더 호출됨) 최종 상태는 정상이 된다. 넘어가도 된다 — 단 `--install`이 끝나면 **반드시 B-6 커맨드로 최종 버전을 재확인**할 것.
 
+> **2026-08-16 실측 — 이건 "무해"가 아니라 3.3GB 재다운로드였다. 그리고 회피할 수 있다.**
+> `isaaclab.bat` 는 하위 pip 에 `--cache-dir` 을 물려주지 않는다. 그래서 B-5에서 `--cache-dir D:\ic\pipcache`
+> 로 잘 받아둔 cu128 휠이 있어도 **pip 기본 캐시(`%LOCALAPPDATA%\pip\Cache`, C: 드라이브)** 를 보고
+> "없다" 판정 후 3.3GB를 새로 내려받는다. 이 날 실제로 그렇게 시작하는 것을 보고 중단했다.
+>
+> **`PIP_CACHE_DIR` 환경변수를 쓰면 해결된다.** `--cache-dir` 과 달리 환경변수는 하위 프로세스로 전파되므로
+> `isaaclab.bat` 안의 pip 도 같은 캐시를 본다. 위 스크립트에 이미 넣어두었다.
+> ```powershell
+> $env:PIP_CACHE_DIR = 'D:\ic\pipcache'
+> ```
+> 덤으로, C: 여유가 빠듯한 자리에서 pip 캐시가 시스템 드라이브를 먹는 것도 같이 막힌다.
+
 **④ — Isaac Lab 설치 후 torchaudio가 사라져 있는 게 정상이다**
 B-5에서 깐 `torchaudio==2.7.0`은 `isaaclab.bat`의 `ensure_cuda_torch`가 `pip uninstall torch torchvision torchaudio`는 하면서
 재설치는 `torch`/`torchvision`만 하기 때문에 없어진다. 공식 pip 설치 커맨드도 애초에 torchaudio를 설치하지 않으므로 (Isaac Lab이 오디오를 안 씀)
@@ -290,6 +303,132 @@ B-5에서 깐 `torchaudio==2.7.0`은 `isaaclab.bat`의 `ensure_cuda_torch`가 `p
 `isaaclab_tasks` 등 USD(`pxr`)를 쓰는 모듈은 `python -c "import ..."`로 단독 실행하면 `ModuleNotFoundError: No module named 'pxr'`가 난다 —
 이건 정상이다. `pxr`은 Isaac Sim Kit이 뜰 때(`SimulationApp` 생성 시점)만 `sys.path`에 잡히므로, `isaaclab.bat -p 스크립트.py` 로 실행하거나
 Kit을 먼저 띄우는 스크립트 안에서만 import가 된다.
+
+---
+
+## B-11. GitHub 자동 커밋·푸시 ★ (세션 시작 직후 실행)
+
+> **왜 이 단계가 생겼나 — 2026-08-16 실측.**
+> 이 날 세션을 시작해 보니 `so-arm101-work/`(코드 1,885줄, 진단 스크립트 9종)가
+> **어느 git repo에도 추적되지 않은 상태**로 바탕화면에 놓여 있었다. 그 자리에서 PC가
+> 초기화됐으면 전부 사라졌다. 원인은 게으름이 아니라 **커밋이 수동이었다는 것**이다.
+> 손으로 하는 일은 바쁠 때 제일 먼저 밀린다.
+>
+> 이 문서의 §「이 환경의 한계」에 *"결과물은 반드시 GitHub에 푸시"* 라고 적혀 있었는데도
+> 그렇게 되지 않았다. **규칙을 적어두는 것으로는 부족하고 자동화해야 한다**는 게 이 단계의 근거다.
+
+### B-11-1. 무엇이 자동화되나
+
+Claude Code의 **Stop 훅**을 쓴다. Claude가 한 턴의 작업을 마칠 때마다 훅이 실행되어
+등록된 repo 전부를 `add` → `commit` → `push` 한다. 사람이 개입할 일이 없다.
+
+```
+Claude 작업 종료
+      ↓
+Stop 훅 발화
+      ↓
+autocommit.ps1  →  repo 1  add/commit/push
+                   repo 2  add/commit/push
+                   repo 3  add/commit/push
+      ↓
+"autocommit: so-arm101-work +3" 메시지 표시
+```
+
+스크립트 두 개가 `so-arm101-simtoreal` repo의 `scripts/` 에 들어 있다.
+
+| 파일 | 역할 | 실행 시점 |
+|---|---|---|
+| `setup_autocommit.ps1` | 인증·훅을 세팅한다 | **세션마다 1회** |
+| `autocommit.ps1` | 실제 add/commit/push | 훅이 자동 호출 |
+
+### B-11-2. 부트스트랩 (인증이 아직 없는 상태)
+
+문서 repo가 private이라 clone 자체에 인증이 필요하다. 여기서만 PAT를 손으로 넣는다.
+
+```powershell
+$env:PATH = "C:\Program Files\Git\cmd;$env:PATH"   # git이 PATH에 없다 (B-11-4 ① 참고)
+cd C:\Users\Administrator\Desktop\n2p\20_Projects
+git clone https://github.com/grim132435-boop/so-arm101-simtoreal.git SO-ARM101_SimToReal
+# Username: grim132435-boop
+# Password: <PAT 붙여넣기>   ← 비밀번호가 아니라 토큰이다
+```
+
+PAT는 https://github.com/settings/tokens → **Generate new token (classic)** → `repo` 스코프.
+**PC방이므로 만료를 짧게(7일) 잡는 편이 안전하다.**
+
+### B-11-3. 세팅 (1회)
+
+```powershell
+cd C:\Users\Administrator\Desktop\n2p\20_Projects\SO-ARM101_SimToReal
+powershell -ExecutionPolicy Bypass -File scripts\setup_autocommit.ps1
+```
+
+PAT를 한 번 더 물어본다(붙여넣으면 됨). 스크립트가 하는 일은 네 가지다.
+
+1. **`user.name` / `user.email` 설정** — 없으면 `commit` 자체가 거부된다.
+   PC방 초기화 후 이게 비어 있는 것을 실측으로 확인했다.
+2. **인증 저장** — `credential.helper` 를 `store --file=D:\ic\.git-credentials` 로 교체.
+   시스템 gitconfig의 `manager`(GCM)를 `--replace-all` 로 덮는다. 안 그러면 helper가
+   누적되어 GCM이 먼저 잡고 **대화형 창을 띄워 자동화가 거기서 멈춘다.**
+3. **Stop 훅 등록** — `%USERPROFILE%\.claude\settings.json` 에 `hooks.Stop` 만 병합한다.
+   `model` 같은 기존 키는 건드리지 않는다.
+4. **즉시 시험 실행** — 훅을 기다리지 않고 그 자리에서 한 번 돌려 결과를 보여준다.
+
+> **이미 Claude Code가 떠 있었다면 `/hooks` 를 한 번 열어라.** 설정 파일 감시자가
+> 변경을 다시 읽는다. 새로 띄우는 경우엔 필요 없다.
+
+### B-11-4. 대상 repo 추가·변경
+
+`scripts/autocommit.ps1` 상단의 배열 한 곳만 고치면 된다.
+
+```powershell
+$Repos = @(
+    'C:\Users\Administrator\Desktop\n2p\20_Projects\SO-ARM101_SimToReal',
+    'C:\Users\Administrator\Desktop\n2p\20_Projects\SO-ARM101_SimToReal\so-arm101-work',
+    'C:\Users\Administrator\Desktop\n2p\20_Projects\Isaac-simready-validation'
+)
+```
+
+### B-11-5. 설계상 정한 것 (바꾸기 전에 읽을 것)
+
+| 결정 | 이유 |
+|---|---|
+| **훅은 절대 실패로 끝나지 않는다** (항상 `exit 0`) | 훅이 0이 아닌 코드로 죽으면 Claude 작업 흐름까지 끊긴다. 커밋 실패보다 그게 더 나쁘다. 모든 오류는 `.autocommit.log` 로만 남는다 |
+| **push 실패해도 commit은 남긴다** | 네트워크·토큰 문제로 push가 막혀도 로컬 이력은 보존된다. 다음 성공 시 같이 올라간다 |
+| **push 거부되면 `pull --rebase --autostash` 후 1회 재시도** | 다른 자리에서 먼저 푸시한 경우를 자동 복구한다. 2026-08-16 실측으로 이 경로가 실제 동작하는 것을 확인했다 |
+| **병합/리베이스 중이면 건드리지 않는다** | `MERGE_HEAD` 등이 있으면 건너뛴다. 자동 커밋이 충돌 해결을 망치는 것을 막는다 |
+| **커밋 메시지는 파일로 넘긴다** (`commit -F`) | `-m` 으로 한글을 넘기면 콘솔 코드페이지에서 깨진다 |
+
+### B-11-6. 자주 막히는 지점
+
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| 훅은 도는데 `push 실패, 로컬 보관` | PAT 만료 또는 미설정 | `setup_autocommit.ps1` 재실행 |
+| `Please tell me who you are` | `user.name`/`user.email` 없음 | 같음 (B-11-3의 1번) |
+| 인증 창이 뜨고 자동화가 멈춤 | GCM이 helper 목록에 남아 있음 | `git config --global --replace-all credential.helper "store --file=D:/ic/.git-credentials"` |
+| 훅이 아예 안 돎 | 세션 시작 후 설정을 바꿈 | `/hooks` 를 한 번 열거나 Claude Code 재시작 |
+| `.ps1` 실행 시 `문자열에 종결자가 없습니다` | **PowerShell 5.1은 BOM 없는 UTF-8을 ANSI로 읽어 한글이 깨진다** | 파일을 **UTF-8 with BOM** 으로 저장. 아래 참고 |
+
+한글 주석이 든 `.ps1` 을 새로 만들 때는 반드시 BOM을 넣는다. 2026-08-16에 이걸로 한 번 막혔다.
+
+```powershell
+$p = 'scripts\my.ps1'
+$t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($p, $t, [System.Text.UTF8Encoding]::new($true))
+```
+
+### B-11-7. 알고 쓸 것 (한계)
+
+- **`git add -A` 는 무차별이다.** 새로 생긴 파일을 전부 담는다. 큰 산출물(`.mp4`, 체크포인트,
+  데이터셋)이 실수로 올라가지 않게 각 repo의 `.gitignore` 를 먼저 갖춰라. 지금
+  `so-arm101-work/.gitignore` 는 `outputs/ videos/ *.mp4 *.hdf5` 를 막아둔 상태다.
+- **PAT가 `D:\ic\.git-credentials` 에 평문으로 남는다.** PC방 초기화와 함께 지워지는 것을
+  전제로 한 설계다. 초기화되지 않는 자리라면 세션 끝에 직접 지워라.
+  ```powershell
+  Remove-Item D:\ic\.git-credentials -Force
+  ```
+- **커밋 메시지가 `auto: N 개 파일 변경` 으로 기계적이다.** 의미 있는 단위로 남기고 싶으면
+  중간에 직접 커밋하면 된다. 훅은 남은 변경만 쓸어 담는다.
 
 ---
 
