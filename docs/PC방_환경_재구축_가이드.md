@@ -610,6 +610,9 @@ $t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
 | `isaaclab.bat --install` 후 `ModuleNotFoundError: No module named 'isaaclab'` | `flatdict==4.0.1` 빌드가 `pkg_resources` 없어서 조용히 실패 (setuptools 81+). 기보고된 버그: [#4577](https://github.com/isaac-sim/IsaacLab/issues/4577), 수정 [#4581](https://github.com/isaac-sim/IsaacLab/pull/4581) — v2.3.2엔 미포함. **`flatdict==4.0.0` 선점은 안 통한다** (setup.py가 4.0.1 exact pin, 2026-08-16 재실측) | `pip install "setuptools<81"` → `pip install flatdict==4.0.1 --no-build-isolation` → 필요 시 `pip install -e source\isaaclab --no-build-isolation` (B-10 known issue ① 참고) |
 | `isaaclab.bat --install` 중 torch 3.3GB 재다운로드 | `isaaclab.bat`이 `--cache-dir`을 하위 pip에 안 물려줌 → 기본 캐시(C:)를 봄 | `$env:PIP_CACHE_DIR='D:\ic\pipcache'` (환경변수는 하위 프로세스로 전파됨) |
 | 한글 주석 든 `.ps1`이 엉뚱한 줄에서 `문자열에 종결자가 없습니다` | PowerShell 5.1은 BOM 없는 UTF-8을 ANSI로 읽어 한글이 깨짐 | 파일을 **UTF-8 with BOM**으로 저장 (B-11-6 참고) |
+| `RuntimeError: A camera was spawned without the --enable_cameras flag` | 헤드리스 실행 시 카메라는 기본으로 꺼져 있음 | 실행 인자에 `--enable_cameras` 추가. **종료 코드는 0으로 나오니 출력을 직접 볼 것** |
+| `lerobot` 은 깔렸는데 `LeRobotDataset` 임포트 실패 | 0.6.1은 데이터셋이 별도 extra | `pip install "lerobot[dataset,training,dataset-viz]==0.6.1"` (B-10-1) |
+| `pip install lerobot==0.6.1` 이 `No matching distribution` | env가 Python 3.11 — lerobot 0.5.0+는 3.12 요구 | 3.12로 별도 env (B-10-1). 에러 **첫 줄**의 `Ignored the following versions...` 가 진짜 이유 |
 | `rl_games` 설치 중 `Cannot find command 'git'` | 같은 세션에서 방금 깐 git이 하위 pip 프로세스 PATH에 반영 안 됨 | 새 PowerShell 창을 열거나 `$env:PATH`에 `D:\ic\Git\bin` 그 세션에서 직접 추가 |
 | `isaaclab.bat --install` 시작하자마자 `The filename, directory name, or volume label syntax is incorrect.` | `pip show torch` 버전 파싱 버그로 항상 재설치 판정 (무해, self-heal) | 무시하고 진행, 끝나면 B-6으로 최종 torch 버전만 재확인 |
 
