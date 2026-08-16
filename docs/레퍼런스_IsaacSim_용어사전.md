@@ -1,3 +1,9 @@
+---
+type: reference
+project: Isaac-simready-validation
+updated: 2026-08-16
+tags: [isaac-sim, 레퍼런스, 용어]
+---
 # 레퍼런스 — Isaac Sim 용어·구조 사전
 
 > 🌐 **통합 웹 매뉴얼** — https://claude.ai/code/artifact/52ad7d3c-f237-4329-809f-c058a6123a5b

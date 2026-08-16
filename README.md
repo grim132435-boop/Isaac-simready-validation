@@ -1,3 +1,12 @@
+---
+type: project-index
+project: Isaac-simready-validation
+status: 진행
+repo: https://github.com/grim132435-boop/Isaac-simready-validation
+started: 2026-07-29
+updated: 2026-08-16
+tags: [project, simready, ur10, 물성검증]
+---
 # Sim-Ready 물성값 검증 파이프라인 (Isaac Sim 5.1)
 
 정적 3D 에셋과 로봇을 **물리적으로 맞는 상태**로 만드는 과정을 정량 지표로 검증한다.

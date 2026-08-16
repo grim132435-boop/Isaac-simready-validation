@@ -1,3 +1,9 @@
+---
+type: howto
+project: Isaac-simready-validation
+updated: 2026-08-16
+tags: [isaac-sim, 실습, urdf, 게인튜닝, ur10]
+---
 # GUI 실습 — URDF 임포트 → 조인트 게인 튜닝 → 중력보상
 
 > **용도** — 실무 면접에서 "지금 Isaac Sim 켜서 로봇 하나 불러오고 제어 붙여보세요" 를 요구받을 때

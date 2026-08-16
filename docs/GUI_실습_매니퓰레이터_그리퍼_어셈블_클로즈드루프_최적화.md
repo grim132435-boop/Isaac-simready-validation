@@ -1,3 +1,9 @@
+---
+type: howto
+project: Isaac-simready-validation
+updated: 2026-08-16
+tags: [isaac-sim, 실습, 그리퍼, robotiq]
+---
 # GUI 실습 — 매니퓰레이터+그리퍼 임포트 → 어셈블 → 클로즈드루프 → 게인튜닝 → 최적화
 
 > 🌐 **통합 웹 매뉴얼** — https://claude.ai/code/artifact/52ad7d3c-f237-4329-809f-c058a6123a5b

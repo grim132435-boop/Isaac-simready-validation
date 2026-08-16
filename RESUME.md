@@ -1,3 +1,10 @@
+---
+type: project-log
+project: Isaac-simready-validation
+status: 진행
+updated: 2026-08-16
+tags: [project, simready, 이어서할일]
+---
 # 여기서부터 이어서 — 다음 세션 시작 문서
 
 > **PC방에 도착하면 이 파일부터 엽니다.**
@@ -64,8 +71,8 @@ cd Isaac-simready-validation
 | 문서 | 용도 |
 |---|---|
 | ★ [프로젝트 — 심레디 에셋 스코어카드](docs/프로젝트_심레디_에셋_스코어카드.md) | **다음에 할 실험 + 면접 답변 스크립트** |
-| [핵심개념_정리.md](docs/핵심개념_정리.md) | USD/PhysX/Kit 용어 지도. **먼저 읽을 것** |
-| [학습커리큘럼](docs/학습커리큘럼_Isaac_Sim_기초부터_면접까지.md) | STEP 0~8. 예측→실행→자가진단 |
+| [[IsaacSim_핵심개념]] | USD/PhysX/Kit 용어 지도. **먼저 읽을 것** |
+| [[IsaacSim_학습커리큘럼]] | STEP 0~8. 예측→실행→자가진단 |
 | [GUI 실습 — URDF 임포트·게인튜닝](docs/GUI_실습_URDF임포트_게인튜닝_중력보상.md) | 로봇 1대 기준 클릭 순서 |
 | [GUI 실습 — 매니퓰레이터+그리퍼](docs/GUI_실습_매니퓰레이터_그리퍼_어셈블_클로즈드루프_최적화.md) | **튜토리얼 6~12.** 어셈블·클로즈드루프·최적화 |
 | 📖 [레퍼런스 — 용어·구조 사전](docs/레퍼런스_IsaacSim_용어사전.md) | **초록 링크 만났을 때 30초 조회용** |
@@ -107,7 +114,7 @@ GUI로 `cobotta_pro_900` 임포트까지 완료. collider 시각화로 확인하
 전체 설명이 있습니다.
 
 ### 개념 확인
-[핵심개념_정리.md](docs/핵심개념_정리.md) 에서 특히:
+[[IsaacSim_핵심개념]] 에서 특히:
 - **Type(하나) vs API(여러 개)** — `.Apply()` 구조. 엔닷라이트 사업의 핵심
 - **Drive Type: Acceleration vs Force** — 관성 정규화 여부
 - **제조사 게인을 왜 안 쓰는가** — 물리 파라미터 vs 모델링 선택
@@ -279,7 +286,7 @@ Get-ChildItem D:\ic\env -Recurse -Filter ur10.urdf | Select-Object -ExpandProper
 - 정적 오차 → 게인·payload 모델링에 반응
 - 동적 오차 → 지연에만 반응, **게인으로는 원리적으로 못 줄임**
 
-압박 질문 대비는 [학습커리큘럼 STEP 8](docs/학습커리큘럼_Isaac_Sim_기초부터_면접까지.md) 에 있습니다.
+압박 질문 대비는 [[IsaacSim_학습커리큘럼]] STEP 8 에 있습니다.
 특히 이 둘이 위험합니다:
 - *"이거 튜토리얼 따라한 거 아닌가요?"*
 - *"저희는 로봇이 아니라 에셋을 만듭니다. 이 경험이 왜 관련 있죠?"*

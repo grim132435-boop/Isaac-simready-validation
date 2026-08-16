@@ -1,3 +1,9 @@
+---
+type: readme
+project: Isaac-simready-validation
+updated: 2026-08-16
+tags: [project, simready, readme]
+---
 # Isaac-simready-validation — 이 폴더가 무엇인가
 
 > 옆 폴더 `SO-ARM101_SimToReal` 과 헷갈릴 때 이 파일을 먼저 본다.
@@ -29,15 +35,17 @@ docs/PC방_환경_재구축_가이드.md
 Isaac Sim 설치를 두 프로젝트가 같이 쓰므로 한 곳에만 둔다. SO-ARM101 쪽 절차
 (B-10-1 LeRobot, B-11 자동 커밋)도 여기 들어 있다.
 
-**2) Isaac Sim 일반 학습자료 (프로젝트 무관)**
+**2) Isaac Sim 레퍼런스 (실습 문서의 짝)**
 ```
-docs/레퍼런스_IsaacSim_도구.md
-docs/레퍼런스_IsaacSim_용어사전.md
-docs/핵심개념_정리.md
-docs/학습커리큘럼_Isaac_Sim_기초부터_면접까지.md
+docs/레퍼런스_IsaacSim_도구.md      ← GUI_실습_* 이 11회 참조
+docs/레퍼런스_IsaacSim_용어사전.md  ← GUI_실습_* 이 17회 참조
 docs/문서작성_가이드.md
 ```
-특정 프로젝트 것이 아니라 Isaac Sim 자체를 익히는 자료다.
+일반 자료처럼 보이지만 **실습 문서와 상호참조가 28곳**이라 떼면 링크가 다 깨진다.
+그래서 볼트로 빼지 않고 여기 둔다. 2026-08-16에 옮겨봤다가 되돌린 결과다.
+
+> **프로젝트와 무관한 일반 지식은 볼트로 갔다.** 아래 셋은 `30_Study/topics/` 에 있다.
+> `[[IsaacSim_핵심개념]]` · `[[IsaacSim_학습커리큘럼]]` · `[[강화학습_기초개념]]`
 
 ## 폴더 구성
 
