@@ -373,12 +373,35 @@ $env:PIP_CACHE_DIR='D:\ic\pipcache'
 & 'D:\ic\miniconda3\Scripts\conda.exe' create -p D:\ic\lerobot-env python=3.12 -y --override-channels -c conda-forge
 
 & 'D:\ic\lerobot-env\python.exe' -m pip install --upgrade pip
-& 'D:\ic\lerobot-env\python.exe' -m pip install "lerobot==0.6.1"
+
+# ★ extras 를 반드시 붙인다. 맨 lerobot 만 깔면 데이터셋 API 가 안 들어온다 (아래 참고)
+& 'D:\ic\lerobot-env\python.exe' -m pip install "lerobot[dataset,training,dataset-viz]==0.6.1"
 
 # ★ torch를 cu128로 교체 — 여기서도 필요하다 (B-5와 같은 이유)
 & 'D:\ic\lerobot-env\python.exe' -m pip install --index-url https://download.pytorch.org/whl/cu128 `
     torch==2.7.0 torchvision==0.22.0
 ```
+
+> ### ⚠️ `pip install lerobot` 만으로는 데이터셋을 못 만든다 — 2026-08-16 실측
+> 0.6.1은 기능이 extras로 잘게 쪼개져 있다. 기본 설치엔 `datasets` 의존성이 빠져 있어서
+> **ACT 정책은 임포트되는데 데이터셋 API만 안 된다.** 그래서 "설치는 됐다"고 착각하기 쉽다.
+> ```
+> >>> from lerobot.datasets.lerobot_dataset import LeRobotDataset
+> ImportError: 'datasets' is required but not installed.
+>              Install it with: pip install 'lerobot[dataset]'
+> ```
+> 우리 목적(시뮬에서 시연 생성 → ACT 학습)에 필요한 것은 셋이다.
+>
+> | extra | 주는 것 | 왜 필요한가 |
+> |---|---|---|
+> | `dataset` | `LeRobotDataset.create/add_frame/save_episode` | 시연을 파일로 남기는 쪽 **과** 학습 시 읽는 쪽 양쪽 |
+> | `training` | `lerobot-train` | ACT 학습 |
+> | `dataset-viz` | `lerobot-dataset-viz` | 만든 데이터셋이 실물과 같은 모양인지 검수 (ACT 문서 5-4 절차) |
+>
+> 실물 모터용 extras(`feetech` 등)는 로봇이 PC방에 없으므로 넣지 않는다.
+> 전체 목록은 `python -c "from importlib.metadata import metadata; print(sorted(set(metadata('lerobot').get_all('Provides-Extra'))))"` 로 볼 수 있다.
+>
+> **extras 설치가 torch를 기본 휠로 덮을 수 있으니, 설치 후 cu128인지 반드시 재확인한다.**
 
 **torch 교체를 빠뜨리지 말 것.** RTX 5070은 Blackwell(sm_120)이고 PyPI 기본 휠은 그걸 커버하지 않는다.
 학습은 도는데 CPU로 돌아 12배 느려지는 식으로 조용히 망가진다.
@@ -441,11 +464,38 @@ autocommit.ps1  →  repo 1  add/commit/push
 문서 repo가 private이라 clone 자체에 인증이 필요하다. 여기서만 PAT를 손으로 넣는다.
 
 ```powershell
-$env:PATH = "C:\Program Files\Git\cmd;$env:PATH"   # git이 PATH에 없다 (B-11-4 ① 참고)
+$env:PATH = "C:\Program Files\Git\cmd;$env:PATH"   # git이 PATH에 없다
 cd C:\Users\Administrator\Desktop\n2p\20_Projects
+
+# 문서 repo
 git clone https://github.com/grim132435-boop/so-arm101-simtoreal.git SO-ARM101_SimToReal
 # Username: grim132435-boop
 # Password: <PAT 붙여넣기>   ← 비밀번호가 아니라 토큰이다
+
+# 코드 repo (문서 repo 안쪽에 들어간다 — .gitignore 로 제외돼 있어 충돌하지 않는다)
+git clone https://github.com/grim132435-boop/so-arm101-work.git SO-ARM101_SimToReal\so-arm101-work
+
+# 측정 원자료 repo
+git clone https://github.com/grim132435-boop/Isaac-simready-validation.git
+```
+
+**정션을 반드시 만들어라.** 코드가 `D:\ic\so-arm101-work\src` 를 **절대경로로 박아 쓴다**
+(스크립트 11개 전부). 사본을 하나 더 두면 둘이 갈라지므로, 작업본은 하나로 두고
+이름만 이어준다. 디렉터리 정션은 관리자 권한이 필요 없다.
+
+```powershell
+New-Item -ItemType Junction -Path 'D:\ic\so-arm101-work' `
+         -Target 'C:\Users\Administrator\Desktop\n2p\20_Projects\SO-ARM101_SimToReal\so-arm101-work'
+
+# 확인
+Test-Path 'D:\ic\so-arm101-work\src\so101_pickplace\__init__.py'   # True 여야 한다
+```
+
+그리고 로봇 cfg 패키지를 `D:\ic\env` 에 등록한다. `isaac_so_arm101` 은
+`isaaclab==2.3.0` 을 핀하고 있어서 **`--no-deps` 없이 깔면 2.3.2를 2.3.0으로 끌어내린다.**
+
+```powershell
+& 'D:\ic\env\python.exe' -m pip install -e D:\ic\repos\isaac_so_arm101 --no-deps
 ```
 
 PAT는 https://github.com/settings/tokens → **Generate new token (classic)** → `repo` 스코프.
