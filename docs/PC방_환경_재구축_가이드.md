@@ -349,6 +349,58 @@ Kit을 먼저 띄우는 스크립트 안에서만 import가 된다.
 
 ---
 
+### B-10-1. LeRobot 환경 (ACT 학습용) — **Python 3.12 별도 env**
+
+Isaac Sim 안에서 만든 시연 데이터로 ACT를 학습하려면 LeRobot이 필요하다.
+**Isaac Sim의 `D:\ic\env`에 같이 넣을 수 없다.**
+
+> ### ⚠️ Python 버전이 갈린다 — 2026-08-16 실측
+> `lerobot` 은 **0.5.0부터 `Requires-Python >=3.12`** 로 올라갔다. Isaac Sim 5.1은 3.11 고정이다.
+> 3.11 env에 설치를 시도하면 pip이 0.6.1을 후보에서 아예 빼고 이렇게 끝난다.
+> ```
+> ERROR: Ignored the following versions that require a different python version:
+>        0.5.0 Requires-Python >=3.12; 0.6.0 ...; 0.6.1 Requires-Python >=3.12
+> ERROR: Could not find a version that satisfies the requirement lerobot==0.6.1
+>        (from versions: 0.1.0, 0.3.2, 0.3.3, 0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.4)
+> ```
+> **에러를 안 읽으면 "0.4.4까지밖에 없나 보다"로 오해하기 쉽다.** 첫 줄이 진짜 이유다.
+> 이 버전 충돌은 「부록: SimReady Foundation」이 3.12 별도 env를 파는 것과 같은 성격이다.
+
+```powershell
+$env:TEMP='D:\ic\tmp'; $env:TMP='D:\ic\tmp'
+$env:PIP_CACHE_DIR='D:\ic\pipcache'
+
+& 'D:\ic\miniconda3\Scripts\conda.exe' create -p D:\ic\lerobot-env python=3.12 -y --override-channels -c conda-forge
+
+& 'D:\ic\lerobot-env\python.exe' -m pip install --upgrade pip
+& 'D:\ic\lerobot-env\python.exe' -m pip install "lerobot==0.6.1"
+
+# ★ torch를 cu128로 교체 — 여기서도 필요하다 (B-5와 같은 이유)
+& 'D:\ic\lerobot-env\python.exe' -m pip install --index-url https://download.pytorch.org/whl/cu128 `
+    torch==2.7.0 torchvision==0.22.0
+```
+
+**torch 교체를 빠뜨리지 말 것.** RTX 5070은 Blackwell(sm_120)이고 PyPI 기본 휠은 그걸 커버하지 않는다.
+학습은 도는데 CPU로 돌아 12배 느려지는 식으로 조용히 망가진다.
+Python 3.12용 휠(cp312)은 3.11용과 다른 파일이라 **캐시가 있어도 3.3GB를 새로 받는다** — 정상이다.
+
+**검증**
+```powershell
+& 'D:\ic\lerobot-env\python.exe' -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+& 'D:\ic\lerobot-env\python.exe' -c "from lerobot.datasets.lerobot_dataset import LeRobotDataset; print('OK')"
+& 'D:\ic\lerobot-env\python.exe' -c "from lerobot.policies.act.modeling_act import ACTPolicy; print('OK')"
+```
+
+> **학습 중에는 Isaac Sim을 같이 돌리지 마라.** VRAM 12GB를 나눠 쓰게 된다.
+> 그리고 `lerobot-train` 이 중복 실행되지 않았는지 반드시 확인한다 —
+> 2026-08-15에 같은 학습이 두 개 돌아 12배 느려진 적이 있다.
+> ```powershell
+> Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'lerobot-train' } |
+>     Select-Object ProcessId, CommandLine
+> ```
+
+---
+
 ## B-11. GitHub 자동 커밋·푸시 ★ (세션 시작 직후 실행)
 
 > **왜 이 단계가 생겼나 — 2026-08-16 실측.**
@@ -480,7 +532,8 @@ $t = [System.IO.File]::ReadAllText($p, [System.Text.UTF8Encoding]::new($false))
 | 항목 | 값 | 이유 |
 |---|---|---|
 | Isaac Sim | **5.1.0** | 핀 안 하면 6.0이 깔림 |
-| Python | **3.11** | Isaac Sim 5.X 요구. **6.0은 3.12** — 문서 볼 때 혼동 주의 |
+| Python | **3.11** (`D:\ic\env`) | Isaac Sim 5.X 요구. **6.0은 3.12** — 문서 볼 때 혼동 주의 |
+| LeRobot | **0.6.1** (`D:\ic\lerobot-env`, **Python 3.12**) | 0.5.0부터 `Requires-Python >=3.12`. Isaac Sim(3.11)과 **같은 env에 못 넣는다** (B-10-1) |
 | PyTorch | **2.7.0 + cu128** | Blackwell(sm_120) 지원. 드라이버 570.86+ 필요 |
 | torchvision | **0.22.0** | torch 2.7과 짝 고정 |
 | Isaac Lab | 2.3.x (필요 시) — 설치는 B-10 참고 | 2.3은 5.1 전용. **6.0과 비호환**. v2.3.2엔 flatdict 버그 있음 (B-10 known issue ①) |
