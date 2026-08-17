@@ -9,6 +9,9 @@ tags: [project, simready, 이어서할일]
 
 > **PC방에 도착하면 이 파일부터 엽니다.**
 > 마지막 세션: **2026-08-10**
+>
+> **P2(OpenUSD 컴포지션)를 진행 중이면 [_P2_착수_인계.md](_P2_착수_인계.md)를 대신 여세요.**
+> 이 파일(P1) 위에 P2 진행 상황을 얹은 문서입니다.
 
 ```
 git clone https://github.com/grim132435-boop/Isaac-simready-validation.git

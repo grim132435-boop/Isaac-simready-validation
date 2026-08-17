@@ -1,7 +1,7 @@
 ---
 type: howto
 project: 공용
-updated: 2026-08-16
+updated: 2026-08-17
 tags: [isaac-sim, isaac-lab, lerobot, 환경구축, pc방]
 ---
 # PC방 환경 재구축 가이드
@@ -34,10 +34,17 @@ tags: [isaac-sim, isaac-lab, lerobot, 환경구축, pc방]
 git clone https://github.com/grim132435-boop/Isaac-simready-validation.git
 ```
 
-> ### ⚠️ 이 문서는 아직 "위에서 아래로" 실행된 적이 없다
-> 각 단계는 실제로 통과한 명령이지만, 문서는 작업이 끝난 뒤 정리한 것이다.
-> **다음 세션이 이 문서의 첫 통합 테스트다.**
-> 막히는 지점이 나오면 그 자리에서 문서를 고치고 커밋해라. 그래야 진짜 검증된 문서가 된다.
+> ### ✅ 2026-08-17 — 경로 B, 위에서 아래로 완주 검증됨
+> B-0부터 B-8(스모크 테스트)까지 문서 그대로 따라가서 한 번의 우회 없이 통과했다.
+> `torch.cuda.is_available()` → `True`, `smoke_test.py` → `PhysX stepping OK`.
+> 이 문서 구조(경로 A/B 선택 포함)로는 이번이 첫 통합 테스트였다.
+>
+> **단, 로컬 작업 폴더가 origin보다 12커밋 뒤처져 있던 걸 이번에 발견·동기화했다.**
+> LeRobot 설치(B-10-1), GitHub 자동커밋 훅(B-11), flatdict known issue 재판정,
+> PIP_CACHE_DIR 수정 등이 로컬엔 없었다. **설치가 이전에 제대로 안 됐다면 이 문서가
+> 아니라 이 문서를 열어보던 로컬 사본이 구버전이었을 가능성이 크다.** 세션 시작 시
+> `git pull` 로 먼저 동기화할 것 — 문서 자체가 "코드·문서 원자료는 GitHub에 있다"고
+> 이미 적어놨는데, git pull 없이 로컬 사본만 계속 열어보면 이 문제가 반복된다.
 
 USB 복원 경로가 필요해지면 아래 「부록: USB 복원」을 본다.
 

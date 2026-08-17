@@ -51,10 +51,11 @@ docs/문서작성_가이드.md
 
 ```
 Isaac-simready-validation/
-├── 00_README.md      이 파일 (폴더 정체)
-├── README.md         프로젝트 본문 — 문제의식, P1/P2/P3 구성
-├── RESUME.md         이어서 할 일
-├── docs/             실습·레퍼런스·환경 가이드
-├── scripts/          p1_drive_tuning.py, smoke_test.py 등
-└── results/          측정 원자료
+├── 00_README.md          이 파일 (폴더 정체)
+├── README.md             프로젝트 본문 — 문제의식, P1/P2/P3 구성
+├── RESUME.md             이어서 할 일 (P1 기준)
+├── _P2_착수_인계.md       이어서 할 일 (P2 기준) — RESUME.md 위에 얹음
+├── docs/                 실습·레퍼런스·환경 가이드
+├── scripts/              p1_drive_tuning.py, smoke_test.py 등
+└── results/              측정 원자료
 ```
